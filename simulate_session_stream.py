@@ -3,12 +3,12 @@ import logging
 import argparse
 import datetime
 import pandas as pd
-from google.cloud import pubsub
+from google.cloud import pubsub_v1
 
 
-TOPIC = 'user_data_topic'
+
 TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
-INPUT = 'gs://ecommerce-283019/2019-Nov.csv'
+
 
 
 def preprocess_data(user_sessions):
@@ -26,9 +26,10 @@ def preprocess_data(user_sessions):
 
     # Transform dataframe into list of lists
     user_sessions = user_sessions.to_string(header=False, index=False,index_names=False).split('\n')
-    logging.info('Dataframe to List of Lists, First row - {0}'.format(user_sessions[0]))
+    # logging.info('Dataframe to List of Lists, First row - {0}'.format(user_sessions[0]))
       
     return user_sessions
+
 
 
 def clean_data(record):
@@ -55,10 +56,10 @@ def get_timestamp(record):
 
 
 
-
 def publish(publisher, topic, events):
     """Publishes All Events from a particular Timestamp"""
-    logging.info('Publishing events from {0}'.format(get_timestamp(events[0])))
+    # Notify accumulated messages
+    logging.info('Publishing event(s) from {0}'.format(get_timestamp(events[0])))
     publisher.publish(topic,events[0])
          
 
@@ -88,8 +89,7 @@ def stream_data_chunk(user_sessions, publisher, pub_topic):
         event_data = clean_data(event_data)
         # Calculate timestamp of current row
         obs_time = get_timestamp(event_data)
-        # logging.info('Obs Time {} '.format(obs_time))
-        # logging.info('Previous Obs Time {} '.format(prevObsTime))
+    
         wait_time = compute_wait_time(obs_time, prevObsTime)
         # logging.info('Wait Time {} '.format(wait_time))
 
@@ -104,46 +104,60 @@ def stream_data_chunk(user_sessions, publisher, pub_topic):
         topublish.append(event_data)
 
         # Publish the accumulated topublish events
-        publish(publisher, pub_topic, topublish) # notify accumulated messages
+        publish(publisher, pub_topic, topublish)
 
         # Empty the list
         topublish = list()
 
         # Current event time becomes previous event time for the next event
         prevObsTime = obs_time
-
-    # Publish left-over records
-    publish(publisher, pub_topic, topublish)
+        # logging.info('Previous Obs Time {} '.format(prevObsTime))
 
 
 
 def main():
 
-   parser = argparse.ArgumentParser(description='Send session data to Cloud Pub/Sub in small groups, simulating real-time behavior')
-   parser.add_argument('--project', help='Example: --project $DEVSHELL_PROJECT_ID', required=True)
-   args = parser.parse_args()
+    parser = argparse.ArgumentParser(
+        description='Send session data to Cloud Pub/Sub simulating real-time messaging')
+   
+    parser.add_argument(
+        '--project',
+        help='Example: --project $DEVSHELL_PROJECT_ID',
+        required=True)
+   
+    parser.add_argument(
+        '--topic',
+        help='Topic name to publish messages. Example: --topic $TOPIC_NAME',
+        required=True)
+        
+    parser.add_argument(
+        '--input',
+        help='Path to file in GCS bucket. Example: --input gs://$PROJECT/$FILE',
+        required=True)
+   
+    args = parser.parse_args()
 
-   # create Pub/Sub notification topic
-   logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
-   publisher = pubsub.PublisherClient()
-   pub_topic = publisher.topic_path(args.project,TOPIC)
-   try:
-      publisher.get_topic(pub_topic)
-      logging.info('Utilizing pub/sub topic {0}'.format(TOPIC))
-   except:
-      publisher.create_topic(pub_topic)
-      logging.info('Creating pub/sub topic {0}'.format(TOPIC))
+    # create Pub/Sub notification topic
+    logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
+    publisher = pubsub_v1.PublisherClient()
+    pub_topic = publisher.topic_path(args.project,args.topic)
+    try:
+        publisher.get_topic(pub_topic)
+        logging.info('Utilizing pub/sub topic {0}'.format(args.topic))
+    except:
+        publisher.create_topic(pub_topic)
+        logging.info('Creating pub/sub topic {0}'.format(args.topic))
     
 
-   # Read dataset 1 chunk at once
-   logging.info('Reading Data from CSV File')
-   user_session_chunks = pd.read_csv(INPUT, chunksize=10**4)
-   logging.info('Pre-Processing CSV Data')
-   for user_sessions in user_session_chunks:
-       # Preprocess data in a chunk
-       user_sessions = preprocess_data(user_sessions)
-       # Transform Data into Messages and Simulate Streaming
-       stream_data_chunk(user_sessions, publisher, pub_topic)
+    # Read dataset 1 chunk at once
+    logging.info('Reading Data from CSV File')
+    user_session_chunks = pd.read_csv(args.input, chunksize=10**4)
+    logging.info('Pre-Processing CSV Data')
+    for user_sessions in user_session_chunks:
+        # Preprocess data in a chunk
+        user_sessions = preprocess_data(user_sessions)
+        # Transform Data into Messages and Simulate Streaming
+        stream_data_chunk(user_sessions, publisher, pub_topic)
 
 
 
