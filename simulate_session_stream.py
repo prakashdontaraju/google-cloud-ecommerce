@@ -151,7 +151,7 @@ def main():
 
     # Read dataset 1 chunk at once
     logging.info('Reading Data from CSV File')
-    user_session_chunks = pd.read_csv(args.input, chunksize=10**4)
+    user_session_chunks = pd.read_csv(args.input, chunksize=10**5)
     logging.info('Pre-Processing CSV Data')
     for user_sessions in user_session_chunks:
         # Preprocess data in a chunk

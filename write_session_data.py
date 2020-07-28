@@ -51,7 +51,7 @@ class TransformMessagesIntoDictionary(beam.DoFn):
         record[6] = float(record[6])
 
         # Get Hour from event_time Datetime variable
-        record.append(record[0][11:13])
+        record.append(int(record[0][11:13]))
 
         # Split category code into details
         category_details = record[4].split('.')
@@ -84,7 +84,7 @@ def run(table_spec, pipeline_args):
         project=pipeline_args.project, dataset=pipeline_args.dataset,
         runner=pipeline_args.runner, staging_location=pipeline_args.staging_location,
         temp_location=pipeline_args.temp_location, region=pipeline_args.region,
-        save_main_session=False, streaming=True, num_workers=2
+        save_main_session=False, streaming=True
     )
 
     with beam.Pipeline(options=pipeline_options) as pcoll:
@@ -93,7 +93,6 @@ def run(table_spec, pipeline_args):
             | "Read PubSub Messages" >> beam.io.ReadFromPubSub(topic=pipeline_args.topic)
             | "Messages as Dictionary" >> beam.ParDo(TransformMessagesIntoDictionary(),
                         column_names=column_names)
-            # | beam.Map(print)
             | "Write to BigQuery" >> beam.io.WriteToBigQuery(
                 table_spec,
                 schema=stream_data_schema,
@@ -150,3 +149,5 @@ if __name__ == '__main__':
         table_spec,
         pipeline_args
     )
+
+    logging.info('Successfully Wrote All Streamed Messages to BigQuery')

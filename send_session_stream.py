@@ -62,7 +62,7 @@ def publish(publisher, topic, events):
          
 
 
-def stream_data_chunk(user_sessions, publisher, pub_topic, speedFactor):
+def stream_data_chunk(user_sessions, publisher, pub_topic):
     """Transforms Events from Data into Byte Messages to Simulate Streaming"""
     topublish = list()
 
@@ -70,8 +70,6 @@ def stream_data_chunk(user_sessions, publisher, pub_topic, speedFactor):
     first_record = clean_data(user_sessions[0])
     # Calculate timestamp of first row
     firstObsTime = get_timestamp(first_record)
-    logging.info('Sending session data from {0}'.format(firstObsTime))
-
     # logging.info('First Record {}'.format(first_record))
 
   
@@ -93,8 +91,8 @@ def stream_data_chunk(user_sessions, publisher, pub_topic, speedFactor):
 
 
     # Wait for 60 seconds between events to simulate streaming
-    logging.info('Waiting 1 minute to simulate streaming of the next {0} hour(s) of data'.format(speedFactor))
-    time.sleep(60)
+    logging.info('Waiting 5 seconds to simulate streaming')
+    time.sleep(5)
 
 
 
@@ -119,9 +117,9 @@ def main():
         required=True)
     
     parser.add_argument(
-        '--speedFactor',
+        '--speedFactor', type=int, default=5,
         help='Hours of data (<6) to publish in 1 minute. For 1 hour(s) of data: --speedfactor=1',
-        type=int, choices=[1, 2, 3, 4, 5], required=True)
+        choices=[1, 2, 3, 4, 5], required=True)
    
     args = parser.parse_args()
 
@@ -139,13 +137,15 @@ def main():
 
     # Read dataset 1 chunk at once
     logging.info('Reading Data from CSV File')
-    user_session_chunks = pd.read_csv(args.input, chunksize=int(args.speedFactor*(10**4)))
+    user_session_chunks = pd.read_csv(args.input, chunksize=int(args.speedFactor*(10**5)))
     logging.info('Pre-Processing CSV Data')
     for user_sessions in user_session_chunks:
         # Preprocess data in a chunk
         user_sessions = preprocess_data(user_sessions)
         # Transform Data into Messages and Simulate Streaming
-        stream_data_chunk(user_sessions, publisher, pub_topic, args.speedFactor)
+        stream_data_chunk(user_sessions, publisher, pub_topic)
+    
+    logging.info('Successfully Published all Messages from Dataset as a Stream')
 
 
 
