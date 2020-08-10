@@ -1,60 +1,27 @@
 import json
+import logging
 import datetime
 import numpy as np
 import pandas as pd
-from pyspark.sql import Row, SQLContext
+from functools import partial
 from gcsfs.core import GCSFileSystem
-from pyspark.sql.functions import split as Split, size
-# from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql import Row, SQLContext
 from pyspark import SparkConf, SparkContext
+from pyspark.sql.functions import split as Split
 from pyspark.sql.types import TimestampType, FloatType
+from connect_to_cassandra import cassandra_connection, close_cassandra_connection
+
 
 
 product_attributes = ['category', 'sub_category', 'product','product_details']
 
 
 
-# def transform_product_information
+def download_from_gcs():
 
 
-# @pandas_udf(user_sessions_spDF.schema, PandasUDFType.MAP_ITER)  
-# def get_product_information(iterator):
+    return user_sessions_chunks_df
 
-
-#     for pdf in iterator:
-
-#         yield pdf[pdf.category_code = transform_product_information(pdf.category_code)]
-
-# def get_product_information(user_sessions_spDF, split_columns, product_attributes):
-
-#     spDF = user_sessions_spDF
-
-#     spDF = spDF.withColumn(product_attributes[0], split_columns.getItem(0))
-#     spDF = spDF.withColumn(product_attributes[1], split_columns.getItem(1))
-#     spDF = spDF.withColumn(product_attributes[2], split_columns.getItem(2))
-#     spDF = spDF.withColumn(product_attributes[3], split_columns.getItem(3))
-
-
-    # detail_level = size(split_columns)
-    # print(detail_level)
-    # if split_columns.getItem(0):
-    #     spDF[product_attributes[0]] = split_columns.getItem(0)
-    #     if split_columns.getItem(1):
-    #         spDF[product_attributes[1]] = split_columns.getItem(1)
-    #         if split_columns.getItem(2):
-    #             spDF[product_attributes[2]] = split_columns.getItem(2)
-    #             if split_columns.getItem(3):
-    #                 spDF[product_attributes[3]] = split_columns.getItem(3)
-    #             else:
-    #                 spDF[product_attributes[3]] = np.nan
-    #         else:
-    #             spDF[product_attributes[2]] = np.nan
-    #     else:
-    #         spDF[product_attributes[1]] = np.nan
-    # else:
-    #     spDF[product_attributes[0]] = np.nan
-
-    # return spDF
 
 
 def get_product_information(row, product_attributes):
@@ -62,21 +29,13 @@ def get_product_information(row, product_attributes):
     category_code = row.category_code
 
     details = category_code.split('.')
-    # detail_level = len(details)
-
-    # for level in range(detail_level):
-    #     row[level+9] = details[level]
 
     row = row.asDict()
 
     row['category_code'] = dict(zip(product_attributes, details))
-    json.dumps(row['category_code'])
+    row['category_code'] = json.dumps(row['category_code'])
 
     return Row(**row)
-
-
-
-
 
 
 
@@ -90,22 +49,9 @@ def transform_data(sqlContext, user_sessions_chunk_df, product_attributes):
     user_sessions_spDF = user_sessions_spDF.withColumn(
                             'price', user_sessions_spDF['price'].cast(FloatType()))
     
-    # print(user_sessions_spDF.show(n=5))
-
-    # split_columns = Split(user_sessions_spDF['category_code'],'.')
-    # user_sessions_spDF = get_product_information(user_sessions_spDF, split_columns, product_attributes)
-
-
-    # user_sessions_spDF = user_sessions_spDF.withColumn(
-    #                     'product_information', get_product_information(user_sessions_spDF['category_code']))
-
-    # user_sessions_spDF = user_sessions_spDF.mapInPandas(get_product_information)
-    # print(user_sessions_spDF.show(n=5))
-    # user_sessions_spDF.select(product_attributes).show(n=5)
-
     # some element-wise or row-wise operations are best with RDDs
     user_sessions_rdd = user_sessions_spDF.rdd.map(list)
-    print(user_sessions_rdd.take(5))
+    # print(user_sessions_rdd.take(5))
     user_sessions_rdd = user_sessions_spDF.rdd.map(
                         lambda row: get_product_information(row, product_attributes))
 
@@ -113,9 +59,44 @@ def transform_data(sqlContext, user_sessions_chunk_df, product_attributes):
 
 
 
+def insert_records(session, user_sessions_df, prepared_sessions):
+
+    logging.info('SECOND')
+
+    for index, row in user_sessions_df.iterrows():
+        session.execute(prepared_sessions
+                    , (row['event_time']
+                        , row['event_type']
+                        , row['product_id']
+                        , row['category_id']
+                        , row['category_code']
+                        , row['brand']
+                        , row['price']
+                        , row['user_id']
+                        , row['user_session']
+                        )
+    )
 
 
 
+def write_to_cassandra(session, cluster, user_sessions_rdd):
+
+
+    query_insert_session_data = "INSERT INTO batch_data " \
+                "(event_time, event_type, product_id, category_id, category_code, brand, price, user_id, user_session) " \
+                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    logging.info('FIRST')
+    prepared_sessions = session.prepare(query_insert_session_data)
+    logging.info('RDD to PySpark Dataframe to Pandas Dataframe')
+    user_sessions_df = user_sessions_rdd.toDF().toPandas()
+    insert_records(session, user_sessions_df, prepared_sessions)
+
+
+
+def view_table_data(session):
+
+    query_view_data = "SELECT * batch_data LIMIT 100"
+    session.execute(query_view_data)
 
 
 
@@ -123,17 +104,34 @@ def main():
 
     user_sessions_chunks_df = pd.read_csv('gs://ecommerce-283019/2019-Nov-Sample.csv',
                                     encoding='utf-8', chunksize=int(10**5))
+    user_sessions_chunks_df = download_from_gcs()
 
     conf = SparkConf().setAppName("Batch Processing with Spark").setMaster("local")
      
     sc = SparkContext(conf = conf)
     sqlContext = SQLContext(sc)
 
+    logging.info('Connecting to Cassandra')
+    cluster, session = cassandra_connection()
+
     for user_sessions_chunk_df in user_sessions_chunks_df:
-        user_sessions_rdd = transform_data(sqlContext, user_sessions_chunk_df, product_attributes)
-        print(user_sessions_rdd.take(5))
+
+        try:
+            logging.info('Transforming data from the Batch')
+            user_sessions_rdd = transform_data(sqlContext, user_sessions_chunk_df, product_attributes)
+            # print(user_sessions_rdd.take(5))
+            # example1 = user_sessions_rdd.first()
+            # print(example1['category_code'])
+            logging.info('Loading Data from the Batch into batch_data Table')
+            write_to_cassandra(session, cluster, user_sessions_rdd)
         
-        break
+        except Exception as e:
+            print(e)
+
+        
+    # view_table_data(session)
+    close_cassandra_connection(cluster, session)
+
 
 
 if __name__ == '__main__':

@@ -16,8 +16,17 @@ def cassandra_connection():
         { 'class' : 'SimpleStrategy', 'replication_factor' : 2 }
         """)
     session.set_keyspace('ecommerce_user_sessions')
-    return session, cluster
+    return cluster, session
 
+
+
+def close_cassandra_connection(cluster, session):
+
+    logging.info('Closing connection to Cassandra')
+    session.shutdown()
+    cluster.shutdown()
+
+    
 
 if __name__ == "__main__":
     logging.info('Not callable')
