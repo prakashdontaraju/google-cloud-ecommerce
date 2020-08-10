@@ -1,5 +1,6 @@
 import json
 import logging
+import argparse
 import datetime
 import numpy as np
 import pandas as pd
@@ -7,20 +8,13 @@ from functools import partial
 from gcsfs.core import GCSFileSystem
 from pyspark.sql import Row, SQLContext
 from pyspark import SparkConf, SparkContext
-from pyspark.sql.functions import split as Split
-from pyspark.sql.types import TimestampType, FloatType
+from pyspark.sql.functions import split as Split, date_format
+from pyspark.sql.types import StringType, FloatType, TimestampType
 from connect_to_cassandra import cassandra_connection, close_cassandra_connection
 
 
 
 product_attributes = ['category', 'sub_category', 'product','product_details']
-
-
-
-def download_from_gcs():
-
-
-    return user_sessions_chunks_df
 
 
 
@@ -35,6 +29,8 @@ def get_product_information(row, product_attributes):
     row['category_code'] = dict(zip(product_attributes, details))
     row['category_code'] = json.dumps(row['category_code'])
 
+    row['event_details'] = row['user_id']+'/'+ str(row['event_time']) 
+
     return Row(**row)
 
 
@@ -48,7 +44,7 @@ def transform_data(sqlContext, user_sessions_chunk_df, product_attributes):
                             'event_time', user_sessions_spDF['event_time'].cast(TimestampType()))
     user_sessions_spDF = user_sessions_spDF.withColumn(
                             'price', user_sessions_spDF['price'].cast(FloatType()))
-    
+
     # some element-wise or row-wise operations are best with RDDs
     user_sessions_rdd = user_sessions_spDF.rdd.map(list)
     # print(user_sessions_rdd.take(5))
@@ -61,7 +57,6 @@ def transform_data(sqlContext, user_sessions_chunk_df, product_attributes):
 
 def insert_records(session, user_sessions_df, prepared_sessions):
 
-    logging.info('SECOND')
 
     for index, row in user_sessions_df.iterrows():
         session.execute(prepared_sessions
@@ -74,6 +69,7 @@ def insert_records(session, user_sessions_df, prepared_sessions):
                         , row['price']
                         , row['user_id']
                         , row['user_session']
+                        , row['event_details']
                         )
     )
 
@@ -83,28 +79,29 @@ def write_to_cassandra(session, cluster, user_sessions_rdd):
 
 
     query_insert_session_data = "INSERT INTO batch_data " \
-                "(event_time, event_type, product_id, category_id, category_code, brand, price, user_id, user_session) " \
-                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-    logging.info('FIRST')
+                "(event_time, event_type, product_id, category_id, category_code, brand, price, user_id, user_session, event_details) " \
+                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     prepared_sessions = session.prepare(query_insert_session_data)
-    logging.info('RDD to PySpark Dataframe to Pandas Dataframe')
+    # RDD to PySpark Dataframe to Pandas Dataframe
     user_sessions_df = user_sessions_rdd.toDF().toPandas()
     insert_records(session, user_sessions_df, prepared_sessions)
 
 
 
-def view_table_data(session):
-
-    query_view_data = "SELECT * batch_data LIMIT 100"
-    session.execute(query_view_data)
-
-
-
 def main():
 
-    user_sessions_chunks_df = pd.read_csv('gs://ecommerce-283019/2019-Nov-Sample.csv',
+    parser = argparse.ArgumentParser(
+        description='Perform Batch processing to send session data to Cassandra')
+
+    parser.add_argument(
+        '--input',
+        help='Path to local file. Example: --input C:/Path/To/File/File.csv',
+        required=True)
+
+    args = parser.parse_args()
+
+    user_sessions_chunks_df = pd.read_csv(args.input,
                                     encoding='utf-8', chunksize=int(10**5))
-    user_sessions_chunks_df = download_from_gcs()
 
     conf = SparkConf().setAppName("Batch Processing with Spark").setMaster("local")
      
@@ -116,20 +113,16 @@ def main():
 
     for user_sessions_chunk_df in user_sessions_chunks_df:
 
-        try:
-            logging.info('Transforming data from the Batch')
-            user_sessions_rdd = transform_data(sqlContext, user_sessions_chunk_df, product_attributes)
-            # print(user_sessions_rdd.take(5))
-            # example1 = user_sessions_rdd.first()
-            # print(example1['category_code'])
-            logging.info('Loading Data from the Batch into batch_data Table')
-            write_to_cassandra(session, cluster, user_sessions_rdd)
-        
-        except Exception as e:
-            print(e)
+        logging.info('Transforming data from the Batch')
+        # print(user_sessions_chunk_df.count())
+        user_sessions_rdd = transform_data(sqlContext, user_sessions_chunk_df, product_attributes)
+        # print(user_sessions_rdd.take(5))
+        # example1 = user_sessions_rdd.first()
+        # print(example1['category_code'])
+        logging.info('Loading Data from the Batch into batch_data Table')
+        write_to_cassandra(session, cluster, user_sessions_rdd)
 
         
-    # view_table_data(session)
     close_cassandra_connection(cluster, session)
 
 

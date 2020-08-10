@@ -7,13 +7,11 @@ logging.basicConfig(level=logging.INFO)
 
 def create_tables(cluster, session, table):
 
-    
-    try:
 
-        drop_table_if_exists = 'DROP TABLE IF EXISTS {table}'.format(table=table)
-        session.execute(drop_table_if_exists)
+    drop_table_if_exists = 'DROP TABLE IF EXISTS {table}'.format(table=table)
+    session.execute(drop_table_if_exists)
 
-        create_batch_data_table = "CREATE TABLE IF NOT EXISTS batch_data (" \
+    create_batch_data_table = "CREATE TABLE IF NOT EXISTS batch_data (" \
                                     "event_time timestamp" \
                                     ", event_type text" \
                                     ", product_id text" \
@@ -23,20 +21,17 @@ def create_tables(cluster, session, table):
                                     ", price float" \
                                     ", user_id text" \
                                     ", user_session text" \
-                                    ", PRIMARY KEY (event_time))"
+                                    ", event_details text" \
+                                    ", PRIMARY KEY (event_details))"
                                     # ", category text" \
                                     # ", sub_category text" \
                                     # ", product text" \
                                     # ", product_details text" \
-                                    
-        logging.info('Creating Batch Processing table in Cassandra')
-        session.execute(create_batch_data_table)
-
-    except Exception as e:
-        print(e)
-
-    # finally:
-        # close_cassandra_connection(cluster, session)
+    
+    logging.info('Creating Batch Processing table in Cassandra')
+    session.execute(create_batch_data_table)
+    
+    # close_cassandra_connection(cluster, session)
 
 
 
@@ -47,7 +42,7 @@ def delete_tables(cluster, session, table):
     drop_table = 'DROP TABLE {table}'.format(table=table)
     session.execute(drop_table)
 
-    # close_cassandra_connection(cluster, session)
+    close_cassandra_connection(cluster, session)
 
 
 
