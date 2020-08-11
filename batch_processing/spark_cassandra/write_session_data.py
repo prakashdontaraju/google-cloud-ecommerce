@@ -8,7 +8,7 @@ from functools import partial
 from gcsfs.core import GCSFileSystem
 from pyspark.sql import Row, SQLContext
 from pyspark import SparkConf, SparkContext
-from pyspark.sql.functions import split as Split, date_format
+from pyspark.sql.functions import split as Split, col, date_format
 from pyspark.sql.types import StringType, FloatType, TimestampType
 from connect_to_cassandra import cassandra_connection, close_cassandra_connection
 
@@ -29,7 +29,7 @@ def get_product_information(row, product_attributes):
     row['category_code'] = dict(zip(product_attributes, details))
     row['category_code'] = json.dumps(row['category_code'])
 
-    row['event_details'] = row['user_id']+'/'+ str(row['event_time']) 
+    row['event_details'] = row['user_id']+'|'+ str(row['event_time']) 
 
     return Row(**row)
 
@@ -79,8 +79,8 @@ def write_to_cassandra(session, cluster, user_sessions_rdd):
 
 
     query_insert_session_data = "INSERT INTO batch_data " \
-                "(event_time, event_type, product_id, category_id, category_code, brand, price, user_id, user_session, event_details) " \
-                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                "(event_time, event_type, product_id, category_id, category_code, brand, price, user_id, user_session, event_details, record_id) " \
+                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now())"
     prepared_sessions = session.prepare(query_insert_session_data)
     # RDD to PySpark Dataframe to Pandas Dataframe
     user_sessions_df = user_sessions_rdd.toDF().toPandas()

@@ -22,7 +22,8 @@ def create_tables(cluster, session, table):
                                     ", user_id text" \
                                     ", user_session text" \
                                     ", event_details text" \
-                                    ", PRIMARY KEY (event_details))"
+                                    ", record_id timeuuid" \
+                                    ", PRIMARY KEY (event_details, record_id))"
                                     # ", category text" \
                                     # ", sub_category text" \
                                     # ", product text" \
