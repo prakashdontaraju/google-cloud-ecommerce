@@ -1,4 +1,5 @@
 import json
+import redis
 import logging
 import argparse
 import numpy as np
@@ -6,7 +7,6 @@ import pandas as pd
 from pyspark.sql import Row, SQLContext
 from pyspark import SparkConf, SparkContext
 from pyspark.sql.types import FloatType, TimestampType
-from connect_to_cassandra import cassandra_connection, close_cassandra_connection
 
 
 
@@ -23,9 +23,9 @@ def get_product_information(row, product_attributes):
     row = row.asDict()
 
     row['category_code'] = dict(zip(product_attributes, details))
-    row['category_code'] = json.dumps(row['category_code'])
+    # row['category_code'] = json.dumps(row['category_code'])
 
-    row['event_details'] = row['user_id']+'|'+ str(row['event_time']) 
+    row['event_details'] = str(row['event_time']) +'|'+ row['user_id']
 
     return Row(**row)
 
@@ -47,47 +47,45 @@ def transform_data(sqlContext, user_sessions_chunk_df, product_attributes):
     user_sessions_rdd = user_sessions_spDF.rdd.map(
                         lambda row: get_product_information(row, product_attributes))
 
-    return user_sessions_rdd
+    user_sessions_spDF = user_sessions_rdd.toDF()
+
+    return user_sessions_spDF
 
 
 
-def insert_records(session, user_sessions_df, prepared_sessions):
+def write_to_redis(redisConnection, user_sessions_spDF):
+
+    user_sessions = user_sessions_spDF.toPandas()
+    # redisConnection.set("key", context.serialize(user_sessions).to_buffer().to_pybytes())
+    for index, row in user_sessions.iterrows():
+        # print(row['category_code'])
+        
+        hash_name = str(index+1)        
+        key = json.dumps(row['event_details'])
+        value = json.dumps(
+            {
+        'event_time': str(row['event_time']), 'event_type': row['event_type'], 'product_id': row['product_id'],
+        'category_id': row['category_id'], 'category_code': row['category_code'], 'brand': row['brand'],
+        'price':  row['price'], 'user_id': row['user_id'], 'user_session':  row['user_session']
+            }
+        )
+        
+        redisConnection.hset(hash_name, key, value)
 
 
-    for index, row in user_sessions_df.iterrows():
-        session.execute(prepared_sessions
-                    , (row['event_time']
-                        , row['event_type']
-                        , row['product_id']
-                        , row['category_id']
-                        , row['category_code']
-                        , row['brand']
-                        , row['price']
-                        , row['user_id']
-                        , row['user_session']
-                        , row['event_details']
-                        )
-    )
 
+def clear_redis_database(redisConnection):
 
-
-def write_to_cassandra(session, cluster, user_sessions_rdd):
-
-
-    query_insert_session_data = "INSERT INTO batch_data " \
-                "(event_time, event_type, product_id, category_id, category_code, brand, price, user_id, user_session, event_details, record_id) " \
-                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now())"
-    prepared_sessions = session.prepare(query_insert_session_data)
-    # RDD to PySpark Dataframe to Pandas Dataframe
-    user_sessions_df = user_sessions_rdd.toDF().toPandas()
-    insert_records(session, user_sessions_df, prepared_sessions)
+    redisConnection.flushdb()
 
 
 
 def main():
 
+    logging.info('First')
+
     parser = argparse.ArgumentParser(
-        description='Perform Batch processing to send session data to Cassandra')
+        description='Perform Batch processing to send session data to Redis')
 
     parser.add_argument(
         '--input',
@@ -96,6 +94,7 @@ def main():
 
     args = parser.parse_args()
 
+    logging.info('Reading Dataset')
     user_sessions_chunks_df = pd.read_csv(args.input,
                                     encoding='utf-8', chunksize=int(10**5))
 
@@ -104,22 +103,25 @@ def main():
     sc = SparkContext(conf = conf)
     sqlContext = SQLContext(sc)
 
-    logging.info('Connecting to Cassandra')
-    cluster, session = cassandra_connection()
+    logging.info('Initializing Redis Connection')
+    redisConnection = redis.Redis(host='127.0.0.1', port=6379, db=0)
+
+    clear_redis_database(redisConnection)
 
     for user_sessions_chunk_df in user_sessions_chunks_df:
 
         logging.info('Transforming data from the Batch')
         # print(user_sessions_chunk_df.count())
-        user_sessions_rdd = transform_data(sqlContext, user_sessions_chunk_df, product_attributes)
-        # print(user_sessions_rdd.take(5))
-        # example1 = user_sessions_rdd.first()
-        # print(example1['category_code'])
-        logging.info('Loading Data from the Batch into batch_data Table')
-        write_to_cassandra(session, cluster, user_sessions_rdd)
+        user_sessions_spDF = transform_data(sqlContext, user_sessions_chunk_df, product_attributes)
+        # print(user_sessions_spDF.show(n=5))
+        # print(column_names)
 
-        
-    close_cassandra_connection(cluster, session)
+        logging.info('Loading DF Data from the Batch into batch_data Table')
+        write_to_redis(redisConnection, user_sessions_spDF)
+
+
+    logging.info('Finished Loading DF Data from all Batches into batch_data Table')
+    # clear_redis_database(redisConnection)
 
 
 
