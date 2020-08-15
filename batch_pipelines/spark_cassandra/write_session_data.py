@@ -1,4 +1,5 @@
 import json
+import random
 import logging
 import argparse
 import numpy as np
@@ -6,7 +7,7 @@ import pandas as pd
 from pyspark.sql import Row, SQLContext
 from pyspark import SparkConf, SparkContext
 from pyspark.sql.types import FloatType, TimestampType
-from connect_to_cassandra import cassandra_connection, close_cassandra_connection
+from connect_to_cassandra import cassandra_connection , close_cassandra_connection
 
 
 
@@ -25,7 +26,9 @@ def get_product_information(row, product_attributes):
     row['category_code'] = dict(zip(product_attributes, details))
     row['category_code'] = json.dumps(row['category_code'])
 
-    row['event_details'] = row['user_id']+'|'+ str(row['event_time']) 
+    row['event_details'] = row['user_id']+'|'+ str(row['event_time'])
+
+    row['record_id'] = random.random()
 
     return Row(**row)
 
@@ -66,6 +69,7 @@ def insert_records(session, user_sessions_df, prepared_sessions):
                         , row['user_id']
                         , row['user_session']
                         , row['event_details']
+                        , row['record_id']
                         )
     )
 
@@ -76,7 +80,7 @@ def write_to_cassandra(session, cluster, user_sessions_rdd):
 
     query_insert_session_data = "INSERT INTO batch_data " \
                 "(event_time, event_type, product_id, category_id, category_code, brand, price, user_id, user_session, event_details, record_id) " \
-                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now())"
+                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)" # use random number rather than uuid (it's long - storage capacity)
     prepared_sessions = session.prepare(query_insert_session_data)
     # RDD to PySpark Dataframe to Pandas Dataframe
     user_sessions_df = user_sessions_rdd.toDF().toPandas()
@@ -94,6 +98,12 @@ def main():
         help='Path to local file. Example: --input C:/Path/To/File/File.csv',
         required=True)
 
+    parser.add_argument(
+        '--port',
+        help='Port to listen to Cassandra. Example: --port=9042',
+        type=int,
+        required=True)
+
     args = parser.parse_args()
 
     user_sessions_chunks_df = pd.read_csv(args.input,
@@ -105,7 +115,7 @@ def main():
     sqlContext = SQLContext(sc)
 
     logging.info('Connecting to Cassandra')
-    cluster, session = cassandra_connection()
+    cluster, session = cassandra_connection(args.port)
 
     for user_sessions_chunk_df in user_sessions_chunks_df:
 

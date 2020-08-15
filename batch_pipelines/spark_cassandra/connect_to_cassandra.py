@@ -4,11 +4,10 @@ from cassandra.cluster import Cluster
 
 logging.basicConfig(level=logging.INFO)
 
-
-def cassandra_connection():
+def cassandra_connection(port):
     """Connection object for Cassandra"""
 
-    cluster = Cluster(['127.0.0.1'], port=9042)
+    cluster = Cluster(['127.0.0.1'], port=port)
     session = cluster.connect()
     session.execute("""
         CREATE KEYSPACE IF NOT EXISTS ecommerce_user_sessions

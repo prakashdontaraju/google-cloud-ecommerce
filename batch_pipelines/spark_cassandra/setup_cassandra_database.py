@@ -1,4 +1,5 @@
 import logging
+import argparse
 from connect_to_cassandra import cassandra_connection, close_cassandra_connection
 
 
@@ -22,7 +23,7 @@ def create_tables(cluster, session, table):
                                     ", user_id text" \
                                     ", user_session text" \
                                     ", event_details text" \
-                                    ", record_id timeuuid" \
+                                    ", record_id float" \
                                     ", PRIMARY KEY (event_details, record_id))"
                                     # ", category text" \
                                     # ", sub_category text" \
@@ -51,7 +52,19 @@ def main():
     """
     Main script that tears down and rebuilds the tables within Cassandra
     """
-    cluster, session = cassandra_connection()
+
+    parser = argparse.ArgumentParser(
+        description='Create Cassandra Table to Perform Batch Processing')
+
+    parser.add_argument(
+        '--port',
+        help='Port to listen to Cassandra. Example: --port=9042',
+        type = int,
+        required=True)
+
+    args = parser.parse_args()
+
+    cluster, session = cassandra_connection(args.port)
 
     table_list = ['batch_data']
 
