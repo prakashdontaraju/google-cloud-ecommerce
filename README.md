@@ -24,13 +24,11 @@ I build the following 2 data pipelines:
   - Grafana
 
 Streaming Pipeline:
-![stream][streamprocessing]
-[streamprocessing]: https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/master/images/streamingpipeline.PNG "Streaming Pipeline"
+![stream](https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/master/images/streamingpipeline.PNG "Streaming Pipeline")
 
 
 Batch Processing Pipeline:
-![batch][batchprocessing]
-[batchprocessing]: https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/master/images/batchpipeline.PNG "Batch Pipeline"
+![batch](https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/master/images/batchpipeline.PNG "Batch Pipeline")
 
 
 # Contents
@@ -88,7 +86,7 @@ My comprehensive conclusion
 - What were my biggest challenges?
 
 # Follow Me On
-*Prakash Dontaraju* [LinkedIn](https://bit.ly/PrakashDontarajuLinkedIn) [Medium](https://bit.ly/PrakashDontarajuMedium) [Twitter](http://bit.ly/PrakashDontarajuTwitter)
+**Prakash Dontaraju** [LinkedIn](https://bit.ly/PrakashDontarajuLinkedIn) [Medium](https://bit.ly/PrakashDontarajuMedium) [Twitter](http://bit.ly/PrakashDontarajuTwitter)
 
 # Appendix
 
