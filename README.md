@@ -1,19 +1,37 @@
 
-------------------------------------------------------------------
-!!! Rename this file to README.md and upload it to your GitHub !!!
-------------------------------------------------------------------
+# Customer Behavior Analysis of eCommerce Store on the Google Cloud Platform
+I build Streaming & Batch Data Pipelines on the Google Cloud Platform and Docker respectively to perform customer behavior analysis.
 
-# Title Of Your Project
-Add a catchy title to your project. Something that people immediately know what you are doing
+(I finished the project. I'm now working on code readability, GitHub documentation as well as writing articles to share my learnings and Google Cloud Platform expertise through my [blog](https://bit.ly/PrakashDontarajuMedium) as you read this. I'm going to publish all my articles and link them to this page by the end of October 2020 while I serve my customers working full time!)
 
 # Introduction & Goals
-- Introduce your project to the reader
-- Orient this section on the Table of contents
-- Write this like an executive summary
-  - With what data are you working
-  - What tools are you using
-  - What are you doing with these tools
-  - Once you are finished add the conclusion here as well
+I build the following 2 data pipelines:
+- Streaming Pipeline on Google Cloud Platform:
+  - Compute Engine
+  - Cloud Pub/Sub
+  - Apache Beam
+  - Cloud Dataflow
+  - Google Cloud Storage
+  - BigQuery
+  - Tableau
+
+- Batch Processing Pipeline entirely on Docker:
+  - Google Cloud Storage
+  - Apache Spark (PySpark)
+  - Cassandra
+  - Redis
+  - MySQL
+  - Grafana
+
+Streaming Pipeline:
+![stream][streamprocessing]
+[streamprocessing]: https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/master/images/streamingpipeline.PNG "Streaming Pipeline"
+
+
+Batch Processing Pipeline:
+![batch][batchprocessing]
+[batchprocessing]: https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/master/images/batchpipeline.PNG "Batch Pipeline"
+
 
 # Contents
 
@@ -30,24 +48,23 @@ Add a catchy title to your project. Something that people immediately know what 
     - [Processing Data Stream](#processing-data-stream)
   - [Batch Processing](#batch-processing)
   - [Visualizations](#visualizations)
-- [Demo](#demo)
 - [Conclusion](#conclusion)
 - [Follow Me On](#follow-me-on)
 - [Appendix](#appendix)
 
 
 # The Data Set
-- Explain the data set
-- Why did you choose it?
-- What do you like about it?
+- Details about the data set
+- Why did I choose this particular data?
+- What did I like about the data?
 - What is problematic?
-- What do you want to do with it?
+- What transformations did I perform?
 
 # Used Tools
-- Explain which tools do you use and why
-- How do they work (don't go too deep into details, but add links)
-- Why did you choose them
-- How did you set them up
+- Details about the tools I chose
+- How do they work? (Briefly)
+- Why did I choose them?
+- How did I set them up?
 
 ## Connect
 ## Buffer
@@ -56,27 +73,22 @@ Add a catchy title to your project. Something that people immediately know what 
 ## Visualization
 
 # Pipelines
-- Explain the pipelines for processing that you are building
-- Go through your development and add your source code
+- Details about the pipelines I built for processing
 
 ## Stream Processing
-### Storing Data Stream
-### Processing Data Stream
+
 ## Batch Processing
+
 ## Visualizations
 
-# Demo
-- You could add a demo video here
-- Or link to your presentation video of the project
-
 # Conclusion
-Write a comprehensive conclusion.
-- How did this project turn out
-- What major things have you learned
-- What were the biggest challenges
+My comprehensive conclusion
+- How did my project turn out?
+- What were my major learnings?
+- What were my biggest challenges?
 
 # Follow Me On
-Add the link to your LinkedIn Profile
+*Prakash Dontaraju* [LinkedIn](https://bit.ly/PrakashDontarajuLinkedIn) [Medium](https://bit.ly/PrakashDontarajuMedium) [Twitter](http://bit.ly/PrakashDontarajuTwitter)
 
 # Appendix
 
