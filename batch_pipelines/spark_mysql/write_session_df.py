@@ -6,7 +6,8 @@ import pandas as pd
 import sqlalchemy as db
 from pyspark.sql import Row, SQLContext
 from pyspark import SparkConf, SparkContext
-from pyspark.sql.types import FloatType, TimestampType
+from pyspark.sql.functions import col, hour, lit, split as Split
+from pyspark.sql.types import FloatType, StringType, TimestampType
 
 
 
@@ -16,14 +17,26 @@ product_attributes = ['category', 'sub_category', 'product','product_details']
 
 def get_product_information(row, product_attributes):
 
-    category_code = row.category_code
 
-    details = category_code.split('.')
-
+    # fill_category_details = [np.nan, np.nan, np.nan, np.nan]
+    
     row = row.asDict()
 
-    row['category_code'] = dict(zip(product_attributes, details))
+    category_details = row['category_code'].split('.')
+
+    
+    row['category_code'] = dict(zip(product_attributes, category_details))
+
+    row['category'] = row['category_code'].get('category', np.nan)
+
+    row['sub_category'] = row['category_code'].get('sub_category', np.nan)
+
+    # row['product'] = row['category_code'].get('product', np.nan)
+
+    # row['product_details'] = row['category_code'].get('product_details', np.nan)
+    
     row['category_code'] = json.dumps(row['category_code'])
+
 
     return Row(**row)
 
@@ -33,11 +46,18 @@ def transform_data(sqlContext, user_sessions_chunk_df, product_attributes):
 
     # column-level transformations quicker with Spark Dataframes vs RDDs
     user_sessions_spDF = sqlContext.createDataFrame(user_sessions_chunk_df.astype(str))
-    user_sessions_spDF.fillna(np.nan)
+    # user_sessions_spDF.fillna(np.nan)
     user_sessions_spDF = user_sessions_spDF.withColumn(
                             'event_time', user_sessions_spDF['event_time'].cast(TimestampType()))
     user_sessions_spDF = user_sessions_spDF.withColumn(
                             'price', user_sessions_spDF['price'].cast(FloatType()))
+    user_sessions_spDF = user_sessions_spDF.withColumn(
+                            'hour', hour(col('event_time')))
+    user_sessions_spDF = user_sessions_spDF.withColumn(
+                            'category', lit(None).cast(StringType()))
+    user_sessions_spDF = user_sessions_spDF.withColumn(
+                            'sub_category', lit(None).cast(StringType()))
+    
 
     # some element-wise or row-wise operations are best with RDDs
     user_sessions_rdd = user_sessions_spDF.rdd.map(list)
@@ -46,6 +66,10 @@ def transform_data(sqlContext, user_sessions_chunk_df, product_attributes):
                         lambda row: get_product_information(row, product_attributes))
 
     user_sessions_spDF = user_sessions_rdd.toDF()
+
+    # print(user_sessions_rdd.take(15))
+
+    # print(user_sessions_spDF.take(15))
 
     return user_sessions_spDF
 
@@ -79,7 +103,8 @@ def mysql_connection(mysql_database, mysql_user, mysql_user_password):
 def write_to_mysql(mysqlConnection, table_name, user_sessions_spDF):
 
     user_sessions_df = user_sessions_spDF.toPandas()
-    user_sessions_df.to_sql(con=mysqlConnection, name=table_name, if_exists='replace')
+    # print(user_sessions_df.head(15))
+    user_sessions_df.to_sql(con=mysqlConnection, name=table_name, if_exists='append', index=False)
 
 
 
@@ -133,8 +158,6 @@ def main():
         logging.info('Transforming data from the Batch')
         # print(user_sessions_chunk_df.count())
         user_sessions_spDF = transform_data(sqlContext, user_sessions_chunk_df, product_attributes)
-        # print(user_sessions_spDF.show(n=5))
-        # print(column_names)
 
         logging.info('Loading DF Data from the Batch into batch_data MySQL Table')
         write_to_mysql(mysqlConnection, args.mysql_table, user_sessions_spDF)
