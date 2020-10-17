@@ -2,7 +2,7 @@
 # Customer Behavior Analysis of eCommerce Store on the Google Cloud Platform
 I build Streaming & Batch Data Pipelines on the Google Cloud Platform and Docker respectively to perform customer behavior analysis.
 
-(I finished the project. I'm now working on code readability, GitHub documentation as well as writing articles to share my learnings and Google Cloud Platform expertise through my [blog](https://bit.ly/PrakashDontarajuMedium) as you read this. I'm going to publish all my articles and link them to this page by the end of October 2020 while I serve my customers working full time!)
+(I finished the programming part of my project. I'm now working on code readability, GitHub documentation as well as sharing my learnings and Google Cloud Platform expertise through my [blog](https://bit.ly/PrakashDontarajuMedium))
 
 # Introduction & Goals
 I build the following 2 data pipelines:
