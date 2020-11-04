@@ -75,72 +75,83 @@ def transform_data(sqlContext, user_sessions_chunk_df, product_attributes):
 
 
 
-def mysql_connection(mysql_database, mysql_user, mysql_user_password):
+def cloudsql_connection(cloudsql_user, project, cloudsql_database, cloudsql_instance):
+
 
     config = {
-
-        'host': "localhost",
-        'port': '3306',
-        'user': '{0}'.format(mysql_user),
-        'password': '{0}'.format(mysql_user_password),
-        'database': '{0}'.format(mysql_database)
+    
+        'user': '{0}'.format(cloudsql_user),
+        # 'password': '{0}'.format(cloudsql_user_password),
+        'project': '{0}'.format(project),
+        'database': '{0}'.format(cloudsql_database),
+        'instance': '{0}'.format(cloudsql_instance)
+        # 'host': '{0}'.format(cloudsql_host)
     }
-    host = config.get('host')
-    port = config.get('port')
 
-    connection_config = 'mysql+pymysql://{0}:{1}@{2}:{3}/{4}'.format(mysql_user,
-                                                    mysql_user_password, host, port, mysql_database)
+
+    cloudsql_user = config.get('user')
+    project = config.get('project')
+    cloudsql_database = config.get('database')
+    cloudsql_instance = config.get('instance')
+
+    connection_config = 'mysql+pymysql://{0}@/{1}?unix_socket=/cloudsql/{2}:{3}'.format(cloudsql_user,
+                                                    cloudsql_database, project, cloudsql_instance)
     # print(connection_config)
     
     # connect to database
     db_engine = db.create_engine(connection_config)
-    mysqlConnection = db_engine.connect()
+    cloudsqlConnection = db_engine.connect()
 
-    return mysqlConnection
+    return cloudsqlConnection
 
 
 
-def write_to_mysql(mysqlConnection, table_name, user_sessions_spDF):
+def write_to_cloudsql(cloudsqlConnection, table_name, user_sessions_spDF):
 
     user_sessions_df = user_sessions_spDF.toPandas()
     # print(user_sessions_df.head(15))
-    user_sessions_df.to_sql(con=mysqlConnection, name=table_name, if_exists='append', index=False)
+    user_sessions_df.to_sql(con=cloudsqlConnection, name=table_name, if_exists='append', index=False)
 
 
 
 def main():
 
     parser = argparse.ArgumentParser(
-        description='Perform Batch processing to send session data to Redis')
+        description='Perform Batch processing to send session data to Cloud SQL')
 
     parser.add_argument(
         '--input',
-        help='Path to local file. Example: --input C:/Path/To/File/File.csv',
+        help='Path to file in GCS bucket. Example: --input gs://$PROJECT/$FILE',
         required=True)
 
     parser.add_argument(
-        '--mysql_database',
-        help='MySQL Database Name; Example: --mysql_database batch_processing',
+        '--cloudsql_user',
+        help='Cloud SQL Database User; Example: --cloudsql_user user_admin',
+        required=True)
+    
+    parser.add_argument(
+        '--project',
+        help='GCP Project ID; Example: --project ecommerce',
         required=True)
 
     parser.add_argument(
-        '--mysql_table',
-        help='MySQL Database Table; Example: --mysql_table batch_data',
+        '--cloudsql_database',
+        help='Cloud SQL Database Name; Example: --cloudsql_database user_sessions',
         required=True)
 
     parser.add_argument(
-        '--mysql_user',
-        help='MySQL Database User; Example: --mysql_user user_admin',
+        '--cloudsql_instance',
+        help='Cloud SQL Instance Name; Example: --cloudsql_instance batch_data',
         required=True)
 
     parser.add_argument(
-        '--mysql_user_password',
-        help='MySQL Database User Password; Example: --mysql_user_password password_admin',
+        '--cloudsql_table',
+        help='MySQL Database Table; Example: --cloudsql_table batch_table',
         required=True)
     
     args = parser.parse_args()
 
-    mysqlConnection = mysql_connection(args.mysql_database, args.mysql_user, args.mysql_user_password)
+    cloudsqlConnection = cloudsql_connection(args.cloudsql_user, args.project, args.cloudsql_database, args.cloudsql_instance)
 
 
     logging.info('Reading Dataset')
@@ -159,11 +170,11 @@ def main():
         # print(user_sessions_chunk_df.count())
         user_sessions_spDF = transform_data(sqlContext, user_sessions_chunk_df, product_attributes)
 
-        logging.info('Loading DF Data from the Batch into batch_data MySQL Table')
-        write_to_mysql(mysqlConnection, args.mysql_table, user_sessions_spDF)
+        logging.info('Loading DF Data from the Batch into batch_table Cloud SQL Table')
+        write_to_cloudsql(cloudsqlConnection, args.cloudsql_table, user_sessions_spDF)
 
 
-    logging.info('Finished Loading DF Data from all Batches into batch_data MySQL Table')
+    logging.info('Finished Loading DF Data from all Batches into batch_table Cloud SQL Table')
     
 
 
