@@ -8,6 +8,7 @@ from pyspark.sql import Row, SQLContext
 from pyspark import SparkConf, SparkContext
 from pyspark.sql.functions import col, hour, lit, split as Split
 from pyspark.sql.types import FloatType, StringType, TimestampType
+# from sqlalchemy import MetaData, Table, Column, Float, Integer, String, DateTime
 
 
 
@@ -99,8 +100,8 @@ def cloudsql_connection(cloudsql_user, project, cloudsql_database, cloudsql_inst
     # print(connection_config)
     
     # connect to database
-    db_engine = db.create_engine(connection_config)
-    cloudsqlConnection = db_engine.connect()
+    cloudsql_engine = db.create_engine(connection_config, echo=True)
+    cloudsqlConnection = cloudsql_engine.connect()
 
     return cloudsqlConnection
 
