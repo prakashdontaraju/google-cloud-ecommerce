@@ -147,7 +147,7 @@ def main():
 
     parser.add_argument(
         '--cloudsql_table',
-        help='MySQL Database Table; Example: --cloudsql_table batch_table',
+        help='Cloud SQL Database Table; Example: --cloudsql_table batch_table',
         required=True)
     
     args = parser.parse_args()
