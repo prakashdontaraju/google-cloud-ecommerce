@@ -76,42 +76,54 @@ def transform_data(sqlContext, user_sessions_chunk_df, product_attributes):
 
 
 
-def cloudsql_connection(cloudsql_user, project, cloudsql_database, cloudsql_instance):
+def cloudsql_connection(cloudsql_user, cloudsql_password, project,
+                            cloudsql_database, cloudsql_ip, cloudsql_instance):
 
 
     config = {
     
         'user': '{0}'.format(cloudsql_user),
-        # 'password': '{0}'.format(cloudsql_user_password),
+        'password': '{0}'.format(cloudsql_password),
         'project': '{0}'.format(project),
         'database': '{0}'.format(cloudsql_database),
+        'ip_address': '{0}'.format(cloudsql_ip),
         'instance': '{0}'.format(cloudsql_instance)
         # 'host': '{0}'.format(cloudsql_host)
     }
 
 
     cloudsql_user = config.get('user')
+    cloudsql_password = config.get('password')
     project = config.get('project')
     cloudsql_database = config.get('database')
+    cloudsql_ip = config.get('ip_address')
     cloudsql_instance = config.get('instance')
 
-    connection_config = 'mysql+pymysql://{0}@/{1}?unix_socket=/cloudsql/{2}:{3}'.format(cloudsql_user,
-                                                    cloudsql_database, project, cloudsql_instance)
+    connection_config = 'mysql+pymysql://{0}:{1}@{2}/{3}'.format(cloudsql_user,
+                            cloudsql_password, cloudsql_ip, cloudsql_database)
+    
+    # connection_config = 'mysql+pymysql://{0}:{1}@/{2}?unix_socket=/cloudsql/{3}'.format(
+    #                           cloudsql_user, cloudsql_password, cloudsql_database,
+    #                               cloudsql_instance)
+
+    # connection_config = 'mysql+pymysql://{0}@{1}/{2}'.format(cloudsql_user,
+    #                                                 cloudsql_database, cloudsql_ip)
     # print(connection_config)
     
     # connect to database
-    cloudsql_engine = db.create_engine(connection_config, echo=True)
+    cloudsql_engine = db.create_engine(connection_config)
     cloudsqlConnection = cloudsql_engine.connect()
 
     return cloudsqlConnection
 
 
 
-def write_to_cloudsql(cloudsqlConnection, table_name, user_sessions_spDF):
+def write_to_cloudsql(cloudsqlConnection, cloudsql_table, user_sessions_spDF):
 
     user_sessions_df = user_sessions_spDF.toPandas()
     # print(user_sessions_df.head(15))
-    user_sessions_df.to_sql(con=cloudsqlConnection, name=table_name, if_exists='append', index=False)
+    user_sessions_df.to_sql(con=cloudsqlConnection, name=cloudsql_table,
+                                if_exists='append', index=False)
 
 
 
@@ -129,6 +141,11 @@ def main():
         '--cloudsql_user',
         help='Cloud SQL Database User; Example: --cloudsql_user user_admin',
         required=True)
+
+    parser.add_argument(
+        '--cloudsql_password',
+        help='Cloud SQL Database Password; Example: --cloudsql_password user_password',
+        required=True)
     
     parser.add_argument(
         '--project',
@@ -141,6 +158,11 @@ def main():
         required=True)
 
     parser.add_argument(
+        '--cloudsql_ip',
+        help='Cloud SQL Instance Public IP Address; Example: --cloudsql_ip 11.22.33.444',
+        required=True)    
+    
+    parser.add_argument(
         '--cloudsql_instance',
         help='Cloud SQL Instance Name; Example: --cloudsql_instance batch_data',
         required=True)
@@ -152,7 +174,9 @@ def main():
     
     args = parser.parse_args()
 
-    cloudsqlConnection = cloudsql_connection(args.cloudsql_user, args.project, args.cloudsql_database, args.cloudsql_instance)
+    cloudsqlConnection = cloudsql_connection(args.cloudsql_user, args.cloudsql_password,
+                            args.project, args.cloudsql_database, args.cloudsql_ip,
+                                args.cloudsql_instance)
 
 
     logging.info('Reading Dataset')
