@@ -1,38 +1,22 @@
-import logging
 import argparse
-# import uuid
+import logging
 # import numpy as np
 import pandas as pd
+# import uuid
+
 from google.cloud import spanner
-from pyspark.sql import Row, SQLContext
+
 from pyspark import SparkConf, SparkContext
+from pyspark.sql import Row, SQLContext
 from pyspark.sql.types import StructType, StructField, StringType, FloatType
 
 
-product_attributes = ['category', 'sub_category', 'product','product_details']
-
-schema = StructType([
-                        StructField("event_time", StringType(), True), 
-                        StructField("event_type", StringType(), True), 
-                        StructField("product_id", StringType(), True), 
-                        StructField("category_id", StringType(), True), 
-                        StructField("category_code", StringType(), True), 
-                        StructField("brand", StringType(), True), 
-                        StructField("price", StringType(), True), 
-                        StructField("user_id", StringType(), True), 
-                        StructField("user_session", StringType(), True)
-                        ])
-
-
-
 def get_product_information(row, product_attributes):
+    """Cleans event details and product information"""
 
     category_code = row.category_code
-
     details = category_code.split('.')
-
     row = row.asDict()
-
     row['category_code'] = dict(zip(product_attributes, details))
     # back to unicode string
     row['category_code'] = str(row['category_code'])
@@ -40,8 +24,9 @@ def get_product_information(row, product_attributes):
     return Row(**row)
 
 
-
-def transform_data(sqlContext, user_sessions_chunk_df, product_attributes):
+def transform_data(
+    sqlContext, user_sessions_chunk_df, product_attributes, schema):
+    """Transforms data before inserting into Cloud Spanner table."""
 
     user_sessions_df = user_sessions_chunk_df.astype(str)
     
@@ -53,11 +38,13 @@ def transform_data(sqlContext, user_sessions_chunk_df, product_attributes):
     # format=TIME_FORMAT)
 
     # inplace=True to fill the cell and not just keep a copy
-    user_sessions_df['brand'] = user_sessions_df['brand'].fillna(value='Not Specified')
+    user_sessions_df['brand'] = user_sessions_df['brand'].fillna(
+        value='Not Specified')
     # user_sessions_df['price'] = pd.to_numeric(user_sessions_df['price'])
     
     # column-level transformations quicker with Spark Dataframes vs RDDs
-    user_sessions_spDF = sqlContext.createDataFrame(user_sessions_df, schema=schema)
+    user_sessions_spDF = sqlContext.createDataFrame(
+        user_sessions_df, schema=schema)
     # user_sessions_spDF.fillna(np.nan)
     # user_sessions_spDF = user_sessions_spDF.withColumn(
     #                         'event_time', user_sessions_spDF['event_time'].cast(TimestampType()))
@@ -68,16 +55,17 @@ def transform_data(sqlContext, user_sessions_chunk_df, product_attributes):
     user_sessions_rdd = user_sessions_spDF.rdd.map(list)
     # print(user_sessions_rdd.take(5))
     user_sessions_rdd = user_sessions_spDF.rdd.map(
-                        lambda row: get_product_information(row, product_attributes))
+        lambda row: get_product_information(row, product_attributes))
 
-    user_sessions_spDF = sqlContext.createDataFrame(user_sessions_rdd, schema=schema)
+    user_sessions_spDF = sqlContext.createDataFrame(
+        user_sessions_rdd, schema=schema)
     user_sessions_df = user_sessions_spDF.toPandas()
     
-
     return user_sessions_df
 
 
 def get_instance(instance_id):
+    """Gets Cloud Spanner Instance ID."""
 
     spanner_client = spanner.Client()
     instance = spanner_client.instance(instance_id)
@@ -85,9 +73,8 @@ def get_instance(instance_id):
     return instance
 
 
-
 def create_database(instance, database_id):
-    """Creates a database and tables for sample data."""
+    """Creates a Cloud Spanner database and table."""
 
     database = instance.database(
         database_id,
@@ -112,14 +99,15 @@ def create_database(instance, database_id):
     logging.info("Waiting for operation to complete...")
     operation.result(120)
 
-    logging.info("Created database {} on instance {}".format(database, instance))
-
+    logging.info(
+        "Created database {} on instance {}".format(database, instance))
 
 #  shortuuid.ShortUUID().random(length=5), spanner.COMMIT_TIMESTAMP
 
 
 
 def write_to_spanner(instance, database_id, user_sessions_values):
+    """Writes dataframe into Cloud Spanner table."""
 
     database = instance.database(database_id)
 
@@ -140,14 +128,15 @@ def write_to_spanner(instance, database_id, user_sessions_values):
     with database.batch() as batch:
         batch.insert(
             table='batch_data',
-            columns = ('record_id', 'event_time', 'event_type', 'product_id', 'category_id', 
-                            'category_code', 'brand', 'price', 'user_id', 'user_session'),
+            columns = ('record_id', 'event_time', 'event_type', 'product_id',
+            'category_id', 'category_code', 'brand', 'price', 'user_id',
+            'user_session'),
             values = user_sessions_values,
         )
 
 
-
 def main():
+    """Executes Batch pipeline to store dataset into Cloud Spanner table."""
 
     parser = argparse.ArgumentParser(
         description='Perform Batch processing to send session data to Spanner')
@@ -159,40 +148,55 @@ def main():
 
     parser.add_argument(
         '--instance_id',
-        help='Cloud Spanner instance ID Example: --instance_id spanner_instance',
+        help='Cloud Spanner instance ID Example: --instance_id spanner_inst',
         required=True)
 
     parser.add_argument(
         '--database_id',
-        help='Cloud Spanner database ID Example: --database-id spanner_database',
+        help='Cloud Spanner database ID Example: --database-id spanner_db',
         required=True)
-
 
     args = parser.parse_args()
 
     logging.info('Reading Dataset')
-    user_sessions_chunks_df = pd.read_csv(args.input,
-                                    encoding='utf-8', chunksize=int(10**2))
+    user_sessions_chunks_df = pd.read_csv(
+        args.input, encoding='utf-8', chunksize=int(10**2))
 
-    conf = SparkConf().setAppName("Batch Processing with Spark").setMaster("local")
+    conf = SparkConf().setAppName(
+        "Batch Processing with Spark").setMaster("local")
      
     sc = SparkContext(conf = conf)
     sqlContext = SQLContext(sc)
 
     instance = get_instance(args.instance_id)
 
-
     logging.info('Creating user_sessions Spanner Database')
     create_database(instance, args.database_id)
 
+    product_attributes = ['category', 'sub_category', 'product',
+    'product_details']
+
+    schema = StructType([
+                        StructField("event_time", StringType(), True), 
+                        StructField("event_type", StringType(), True), 
+                        StructField("product_id", StringType(), True), 
+                        StructField("category_id", StringType(), True), 
+                        StructField("category_code", StringType(), True), 
+                        StructField("brand", StringType(), True), 
+                        StructField("price", StringType(), True), 
+                        StructField("user_id", StringType(), True), 
+                        StructField("user_session", StringType(), True)
+                        ])
 
     for user_sessions_chunk_df in user_sessions_chunks_df:
 
         logging.info('Transforming data from the Batch')
         # print(user_sessions_chunk_df.count())
-        user_sessions_df = transform_data(sqlContext, user_sessions_chunk_df, product_attributes)
+        user_sessions_df = transform_data(
+            sqlContext, user_sessions_chunk_df, product_attributes, schema)
 
-        logging.info('Loading DF Data from the Batch into batch_data Spanner Table')
+        logging.info(
+            'Loading DF Data from the Batch into batch_data Spanner Table')
         # for index, row in user_sessions_df.iterrows():
         #     write_to_spanner(instance, args.database_id, row)
         #     break
@@ -200,10 +204,10 @@ def main():
         user_sessions_values = list(user_sessions_rows)
         write_to_spanner(instance, args.database_id, user_sessions_values)
 
-
-    logging.info('Finished Loading DF Data from all Batches into batch_data Spanner Table')
+    spanner_success_message = ('Finished Loading DF Data from all'+
+    ' Batches into batch_data Spanner Table')
+    logging.info(spanner_success_message)
     
-
 
 if __name__ == '__main__':
     main()

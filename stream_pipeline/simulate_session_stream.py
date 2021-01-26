@@ -1,42 +1,37 @@
-import time
-import logging
 import argparse
 import datetime
+import logging
+import time
 import pandas as pd
 from google.cloud import pubsub_v1
 
 
 
-TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
-
-
-
 def preprocess_data(user_sessions):
-    """Transforms dataframe into list of lists """
+    """Transforms data before inserting into BigQuery table."""
 
     # Transform event_time from string to timestamp (datetime)
     user_sessions['event_time'] = pd.to_datetime(user_sessions['event_time'],
     format='%Y-%m-%d %H:%M:%S %Z')
     # Eliminate Time Zone from timestamp (datetime)
     user_sessions['event_time'] = pd.to_datetime(user_sessions['event_time'],
-    format=TIME_FORMAT)
+    format='%Y-%m-%d %H:%M:%S')
 
     # Display first 5 rows of dataframe
     # logging.info('Dataset CSV to Dataframe: {0}'.format(user_sessions.head()))
 
     # Transform dataframe into list of lists
-    user_sessions = user_sessions.to_string(header=False, index=False,index_names=False).split('\n')
+    user_sessions = user_sessions.to_string(
+        header=False, index=False,index_names=False).split('\n')
     # logging.info('Dataframe to List of Lists, First row - {0}'.format(user_sessions[0]))
       
     return user_sessions
 
 
-
 def clean_data(record):
-    """Transforms Record from List of Strings to Single ',' separated byte message"""
+    """Cleans data to get single ',' separated byte messages"""
     record = ','.join(record.split())
     return record.encode('utf-8')
-
 
 
 def get_timestamp(record):
@@ -52,35 +47,33 @@ def get_timestamp(record):
     # logging.info('\n time useful part {} \n'.format(time_useful))
     timestamp = date_part + ' ' + time_useful
     # logging.info('\n timestamp {} \n'.format(timestamp))
-    return datetime.datetime.strptime(timestamp, TIME_FORMAT)
+    return datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
 
 
 
 def publish(publisher, topic, events):
     """Publishes All Events from a particular Timestamp"""
     # Notify accumulated messages
-    logging.info('Publishing event(s) from {0}'.format(get_timestamp(events[0])))
+    logging.info(
+        'Publishing event(s) from {0}'.format(get_timestamp(events[0])))
     publisher.publish(topic,events[0])
          
 
 
 def compute_wait_time(obs_time, prevObsTime):
-    """Calculates Wait Time between Events to Simulate Streaming"""
+    """Calculates wait time between events to simulate streaming"""
     wait_time = (obs_time - prevObsTime).seconds
     return wait_time
 
 
-
 def stream_data_chunk(user_sessions, publisher, pub_topic):
-    """Transforms Events from Data into Byte Messages to Simulate Streaming"""
+    """Transforms event data into Byte messages to simulate streaming"""
     topublish = list()
 
-   
     first_record = clean_data(user_sessions[0])
     # Calculate timestamp of first row
     firstObsTime = get_timestamp(first_record)
     logging.info('Sending session data from {0}'.format(firstObsTime))
-
     # logging.info('First Record {}'.format(first_record))
 
     prevObsTime = firstObsTime
@@ -95,7 +88,8 @@ def stream_data_chunk(user_sessions, publisher, pub_topic):
 
         if wait_time > 0:
             # Wait for (wait_time) seconds between events to simulate streaming
-            logging.info('Waiting for {0} second(s) to simulate real time stream data'.format(wait_time))
+            wait_message = 'Waiting for {0} second(s) to simulate real time stream data'.format(wait_time)
+            logging.info(wait_message)
             time.sleep(wait_time)
         else:
             pass
@@ -114,11 +108,12 @@ def stream_data_chunk(user_sessions, publisher, pub_topic):
         # logging.info('Previous Obs Time {} '.format(prevObsTime))
 
 
-
 def main():
+    """Executes Steaming pipeline to store dataset into BigQuery table."""
 
     parser = argparse.ArgumentParser(
-        description='Send session data to Cloud Pub/Sub simulating real-time messaging')
+        description=('Send session data to Cloud Pub/Sub' +
+        ' simulating real-time messaging'))
    
     parser.add_argument(
         '--project',
@@ -148,7 +143,6 @@ def main():
         publisher.create_topic(pub_topic)
         logging.info('Creating pub/sub topic {0}'.format(args.topic))
     
-
     # Read dataset 1 chunk at once
     logging.info('Reading Data from CSV File')
     user_session_chunks = pd.read_csv(args.input, chunksize=10**5)
@@ -158,7 +152,6 @@ def main():
         user_sessions = preprocess_data(user_sessions)
         # Transform Data into Messages and Simulate Streaming
         stream_data_chunk(user_sessions, publisher, pub_topic)
-
 
 
 if __name__ == '__main__':
