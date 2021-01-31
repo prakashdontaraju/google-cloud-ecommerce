@@ -6,7 +6,6 @@ import pandas as pd
 from google.cloud import pubsub_v1
 
 
-
 def preprocess_data(user_sessions):
     """Transforms data before inserting into BigQuery table."""
 
@@ -51,13 +50,13 @@ def get_timestamp(record):
 
 
 
-def publish(publisher, topic, events):
+def publish(publisher, topic_path, events):
     """Publishes All Events from a particular Timestamp"""
     # Notify accumulated messages
     logging.info(
         'Publishing event(s) from {0}'.format(get_timestamp(events[0])))
-    publisher.publish(topic,events[0])
-         
+    # future = publisher.publish(topic_path, events[0])
+    publisher.publish(topic_path, events[0])
 
 
 def compute_wait_time(obs_time, prevObsTime):
@@ -66,7 +65,7 @@ def compute_wait_time(obs_time, prevObsTime):
     return wait_time
 
 
-def stream_data_chunk(user_sessions, publisher, pub_topic):
+def stream_data_chunk(user_sessions, publisher, topic_path):
     """Transforms event data into Byte messages to simulate streaming"""
     topublish = list()
 
@@ -98,7 +97,7 @@ def stream_data_chunk(user_sessions, publisher, pub_topic):
         topublish.append(event_data)
 
         # Publish the accumulated topublish events
-        publish(publisher, pub_topic, topublish)
+        publish(publisher, topic_path, topublish)
 
         # Empty the list
         topublish = list()
@@ -124,6 +123,12 @@ def main():
         '--topic',
         help='Topic name to publish messages. Example: --topic $TOPIC_NAME',
         required=True)
+
+    parser.add_argument(
+        '--subscription',
+        help='''Subscription name to receive messages. 
+            Example: --subscription $SUBSCRIPTION_NAME''',
+        required=True)
         
     parser.add_argument(
         '--input',
@@ -135,13 +140,19 @@ def main():
     # create Pub/Sub notification topic
     logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
     publisher = pubsub_v1.PublisherClient()
-    pub_topic = publisher.topic_path(args.project,args.topic)
-    try:
-        publisher.get_topic(pub_topic)
-        logging.info('Utilizing pub/sub topic {0}'.format(args.topic))
-    except:
-        publisher.create_topic(pub_topic)
-        logging.info('Creating pub/sub topic {0}'.format(args.topic))
+    subscriber = pubsub_v1.SubscriberClient()
+    topic_path = publisher.topic_path(args.project,args.topic)
+    subscription_path = subscriber.subscription_path(
+        args.project, args.subscription)
+
+    # create topic to publish and subscription to receive messages
+    topic = publisher.create_topic(request={"name": topic_path})
+    logging.info('Created pub/sub topic {0}'.format(topic))
+    with subscriber:
+        subscription = subscriber.create_subscription(
+            request={"name": subscription_path, "topic": topic_path}
+        )
+    logging.info('Created pub/sub subscription {0}'.format(subscription))
     
     # Read dataset 1 chunk at once
     logging.info('Reading Data from CSV File')
@@ -151,7 +162,7 @@ def main():
         # Preprocess data in a chunk
         user_sessions = preprocess_data(user_sessions)
         # Transform Data into Messages and Simulate Streaming
-        stream_data_chunk(user_sessions, publisher, pub_topic)
+        stream_data_chunk(user_sessions, publisher, topic_path)
 
 
 if __name__ == '__main__':

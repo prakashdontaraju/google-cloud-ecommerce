@@ -9,7 +9,7 @@ def get_table_spec(dataset, project):
     """Gets BigQuery table spec"""
 
     logging.info('Creating a BigQuery Table Spec')
-    table_name = 'stream_data'
+    table_name = 'stream_events'
     table_spec = '{0}:{1}.{2}'.format(project, dataset, table_name)
     logging.info('Table Spec for WriteToBigQuery {0}'.format(table_spec))
 
