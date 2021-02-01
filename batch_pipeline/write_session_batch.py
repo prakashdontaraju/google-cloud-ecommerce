@@ -1,8 +1,6 @@
 import argparse
 import logging
-# import numpy as np
 import pandas as pd
-# import uuid
 
 from google.cloud import spanner
 
@@ -29,27 +27,14 @@ def transform_data(
     """Transforms data before inserting into Cloud Spanner table."""
 
     user_sessions_df = user_sessions_chunk_df.astype(str)
-    
-    # Transform event_time from string to timestamp (datetime)
-    # user_sessions_df['event_time'] = pd.to_datetime(user_sessions_df['event_time'],
-    # format='%Y-%m-%d %H:%M:%S %Z')
-    # Eliminate Time Zone from timestamp (datetime)
-    # user_sessions_df['event_time'] = pd.to_datetime(user_sessions_df['event_time'],
-    # format=TIME_FORMAT)
 
     # inplace=True to fill the cell and not just keep a copy
     user_sessions_df['brand'] = user_sessions_df['brand'].fillna(
         value='Not Specified')
-    # user_sessions_df['price'] = pd.to_numeric(user_sessions_df['price'])
     
     # column-level transformations quicker with Spark Dataframes vs RDDs
     user_sessions_spDF = sqlContext.createDataFrame(
         user_sessions_df, schema=schema)
-    # user_sessions_spDF.fillna(np.nan)
-    # user_sessions_spDF = user_sessions_spDF.withColumn(
-    #                         'event_time', user_sessions_spDF['event_time'].cast(TimestampType()))
-    # user_sessions_spDF = user_sessions_spDF.withColumn(
-    #                         'price', user_sessions_spDF['price'].cast(FloatType()))
 
     # some element-wise or row-wise operations are best with RDDs
     user_sessions_rdd = user_sessions_spDF.rdd.map(list)
@@ -79,8 +64,8 @@ def create_database(instance, database_id):
     database = instance.database(
         database_id,
         ddl_statements=[
-            """CREATE TABLE batch_data ( 
-                        record_id STRING(20) NOT NULL,
+            """CREATE TABLE events_batch ( 
+                        record_id INT64 NOT NULL,
                         event_time STRING(50) NOT NULL, 
                         event_type STRING(50) NOT NULL, 
                         product_id STRING(50) NOT NULL, 
@@ -90,7 +75,7 @@ def create_database(instance, database_id):
                         price STRING(20) NOT NULL, 
                         user_id STRING(50) NOT NULL, 
                         user_session STRING(100) NOT NULL, 
-                        ) PRIMARY KEY (record_id)""",
+                        ) PRIMARY KEY (record_id, event_time)""",
         ],
     )
 
@@ -102,32 +87,15 @@ def create_database(instance, database_id):
     logging.info(
         "Created database {} on instance {}".format(database, instance))
 
-#  shortuuid.ShortUUID().random(length=5), spanner.COMMIT_TIMESTAMP
-
-
 
 def write_to_spanner(instance, database_id, user_sessions_values):
     """Writes dataframe into Cloud Spanner table."""
 
     database = instance.database(database_id)
-
-    # def insert_session(transaction):
-    #     insert_query = """INSERT batch_data (record_id, event_time, event_type, 
-    #     product_id, category_id, category_code, brand, price, user_id, user_session) 
-    #     VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9})""".format(
-    #         uuid.uuid4(), row['event_time'], 
-    #         row['event_type'], row['product_id'], row['category_id'], 
-    #         row['category_code'], row['brand'], row['price'], 
-    #         row['user_id'], row['user_session'])
-    #     session = transaction.execute_update(insert_query)
-
-        # logging.info(session)
-
-    # database.run_in_transaction(insert_session)
     
     with database.batch() as batch:
         batch.insert(
-            table='batch_data',
+            table='events_batch',
             columns = ('record_id', 'event_time', 'event_type', 'product_id',
             'category_id', 'category_code', 'brand', 'price', 'user_id',
             'user_session'),
@@ -143,17 +111,20 @@ def main():
 
     parser.add_argument(
         '--input',
-        help='Path to local file. Example: --input C:/Path/To/File/File.csv',
+        help='''Path to data set in cloud storage
+            Example: --input gs://project/path/to/GCS/file''',
         required=True)
 
     parser.add_argument(
         '--instance_id',
-        help='Cloud Spanner instance ID Example: --instance_id spanner_inst',
+        help='''Cloud Spanner instance ID
+            Example: --instance_id spanner_instance_id''',
         required=True)
 
     parser.add_argument(
         '--database_id',
-        help='Cloud Spanner database ID Example: --database-id spanner_db',
+        help='''Cloud Spanner database ID
+            Example: --database-id spanner_database_id''',
         required=True)
 
     args = parser.parse_args()
@@ -196,16 +167,15 @@ def main():
             sqlContext, user_sessions_chunk_df, product_attributes, schema)
 
         logging.info(
-            'Loading DF Data from the Batch into batch_data Spanner Table')
-        # for index, row in user_sessions_df.iterrows():
-        #     write_to_spanner(instance, args.database_id, row)
-        #     break
-        user_sessions_rows = user_sessions_df.to_records()
+            'Loading DF Data from the Batch into events_batch Spanner Table')
+
+        user_sessions_rows = user_sessions_df.to_records(
+            index=True, index_dtypes=int)
         user_sessions_values = list(user_sessions_rows)
         write_to_spanner(instance, args.database_id, user_sessions_values)
 
     spanner_success_message = ('Finished Loading DF Data from all'+
-    ' Batches into batch_data Spanner Table')
+    ' Batches into events_batch Spanner Table')
     logging.info(spanner_success_message)
     
 
