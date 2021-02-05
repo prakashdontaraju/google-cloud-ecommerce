@@ -28,13 +28,13 @@ def preprocess_data(user_sessions):
 
 
 def clean_data(record):
-    """Cleans data to get single ',' separated byte messages"""
+    """Cleans data to get single ',' separated byte messages."""
     record = ','.join(record.split())
     return record.encode('utf-8')
 
 
 def get_timestamp(record):
-    """Returns Timestamp in '%Y-%m-%d %H:%M:%S' format"""
+    """Returns Timestamp in '%Y-%m-%d %H:%M:%S' format."""
 
     record = record.decode('utf-8')
     # logging.info('\n event data {} \n'.format(record))
@@ -50,13 +50,14 @@ def get_timestamp(record):
 
 
 def publish(publisher, topic_path, events):
-    """Publishes All Events from a particular Timestamp"""
+    """Publishes All Events from a particular Timestamp."""
     # future = publisher.publish(topic_path, events[0])
+    # print(future.result())
     publisher.publish(topic_path, events[0])
          
 
 def stream_data_chunk(user_sessions, publisher, topic_path):
-    """Transforms event data into Byte messages to simulate streaming"""
+    """Transforms event data into Byte messages to simulate streaming."""
     topublish = list()
 
     first_record = clean_data(user_sessions[0])

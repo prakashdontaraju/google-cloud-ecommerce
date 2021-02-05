@@ -10,7 +10,7 @@ from pyspark.sql.types import StructType, StructField, StringType, FloatType
 
 
 def get_product_information(row, product_attributes):
-    """Cleans event details and product information"""
+    """Cleans event details and product information."""
 
     category_code = row.category_code
     details = category_code.split('.')

@@ -17,7 +17,7 @@ def get_table_spec(dataset, project):
 
 
 class TransformMessagesIntoDictionary(beam.DoFn):
-    """Transforms each event (message) from dataset into dictionary"""
+    """Transforms each event (message) from dataset into dictionary."""
 
     def change_message_formatting(self, record):
         """changes format of each message"""
@@ -49,7 +49,7 @@ class TransformMessagesIntoDictionary(beam.DoFn):
 
     
     def process(self, element, column_names):
-        """executes process to transform each message into dictionary"""
+        """executes process to transform each message into dictionary."""
 
         # logging.info('In Transform Messages into Dictionary')
         element = element.decode('utf-8')
@@ -61,7 +61,7 @@ class TransformMessagesIntoDictionary(beam.DoFn):
 
 
 def run(table_spec, pipeline_args):
-    """Stores message stream from dataset in BigQuery"""
+    """Stores message stream from dataset in BigQuery."""
 
     # save_main_session can be set to true because some DoFn's rely on
     # globally imported modules.
