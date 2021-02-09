@@ -1,93 +1,38 @@
+# google-cloud-ecommerce
 
-# Customer Behavior Analysis of eCommerce Store on the Google Cloud Platform
-I build Streaming & Batch Data Pipelines on the Google Cloud Platform and Docker respectively to perform customer behavior analysis.
+## Business Case
 
-(I finished the programming part of my project. I'm now working on code readability, GitHub documentation as well as sharing my learnings and Google Cloud Platform expertise through my [blog](https://bit.ly/PrakashDontarajuMedium))
+A company from the ecommerce space decides to move its data processing, storage and analytics workloads to the Google Cloud Platform as part of its goal to provide its customers a better experience.
 
-# Introduction & Goals
-I build the following 2 data pipelines:
-- Streaming Pipeline on Google Cloud Platform:
-  - Compute Engine
-  - Cloud Pub/Sub
-  - Apache Beam
-  - Cloud Dataflow
-  - Google Cloud Storage
-  - BigQuery
-  - Tableau
+### Focus
 
-- Batch Processing Pipeline entirely on Docker:
-  - Google Cloud Storage
-  - Apache Spark (PySpark)
-  - Cassandra
-  - Redis
-  - MySQL
-  - Grafana
+I engineer streaming & batch data processing pipelines on the Google Cloud Platform. I create the infrastructure and peform customer behavior analysis.
 
-Streaming Pipeline:
-![stream](https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/master/images/streamingpipeline.PNG "Streaming Pipeline")
+(I finished the programming part of my project. I'm now working on GitHub documentation as well as sharing my learnings and Google Cloud Platform expertise through my [blog](https://bit.ly/PrakashDontarajuMedium))
 
+## Data
 
-Batch Processing Pipeline:
-![batch](https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/master/images/batchpipeline.PNG "Batch Pipeline")
+Company name, Kaggle as source, link. Data does not reflect real life data. It's well structured, formatted and hence requires minimal cleaning. Focus is on constructing the pipeline.
 
+### Properties of data
 
-# Contents
+Explanation of columns, Repetitions, Transformations, Duration of data, creating a sample.
 
-- [The Data Set](#the-data-set)
-- [Used Tools](#used-tools)
-  - [Connect](#connect)
-  - [Buffer](#buffer)
-  - [Processing](#processing)
-  - [Storage](#storage)
-  - [Visualization](#visualization)
-- [Pipelines](#pipelines)
-  - [Stream Processing](#stream-processing)
-    - [Storing Data Stream](#storing-data-stream)
-    - [Processing Data Stream](#processing-data-stream)
-  - [Batch Processing](#batch-processing)
-  - [Visualizations](#visualizations)
-- [Conclusion](#conclusion)
-- [Follow Me On](#follow-me-on)
-- [Appendix](#appendix)
+## Streaming Pipeline Implementation
 
+Stream data processing, thought process in having simulation and sending sets of streams (sending 1 message in a chunk at once), tools chosen, reasons behind selections, challenges during implementation, 1 aspect of customer behavior (finding), how finding helps company improve end customer experience
 
-# The Data Set
-- Details about the data set
-- Why did I choose this particular data?
-- What did I like about the data?
-- What is problematic?
-- What transformations did I perform?
+## Batch Pipeline Implementation
 
-# Used Tools
-- Details about the tools I chose
-- How do they work? (Briefly)
-- Why did I choose them?
-- How did I set them up?
+Batch data processing, thought process in selecting pyspark for batch data processing, tools chosen, alternative without pyspark-dataproc if with just python, reasons behind selections, challenges during implementation, another aspect of customer behavior (finding), how finding helps company improve end customer experience
 
-## Connect
-## Buffer
-## Processing
-## Storage
-## Visualization
+## How To Improve End Customer Experience Even Further
 
-# Pipelines
-- Details about the pipelines I built for processing
+other findings - but focus on constructing pipelines and not on deep diving into analytics, add machine learning workloads to existing data to further refine the company's end customer experience
 
-## Stream Processing
-
-## Batch Processing
-
-## Visualizations
-
-# Conclusion
-My comprehensive conclusion
-- How did my project turn out?
-- What were my major learnings?
-- What were my biggest challenges?
-
-# Follow Me On
+## Connect With Me On
 **Prakash Dontaraju** [LinkedIn](https://bit.ly/PrakashDontarajuLinkedIn) [Medium](https://bit.ly/PrakashDontarajuMedium) [Twitter](http://bit.ly/PrakashDontarajuTwitter)
 
-# Appendix
+## Appendix
 
 [Markdown Cheat Sheet](https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet)
