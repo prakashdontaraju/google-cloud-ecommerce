@@ -41,39 +41,39 @@ The 2 purchase funnels are
 
 ### Implementation
 
-![Streaming & Batch Pipelines on Google Cloud](https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/main/images/google_cloud_pipeline.png)
+![Streaming & Batch Pipelines on Google Cloud](https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/master/images/google_cloud_pipeline.png)
 
 ### Storage
 
 BigQuery (Storing streaming data)
 
-![Streaming Data in BigQuery](https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/main/images/bigquery_store.png)
+![Streaming Data in BigQuery](https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/master/images/bigquery_store.png)
 
 Cloud Spanner (Storing data in batches)
 
-![Batch Data in Cloud Spanner](https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/main/images/spanner_store.png)
+![Batch Data in Cloud Spanner](https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/master/images/spanner_store.png)
 
 ## Analysis
 
 * Daily event count
 
-![Daily Event Count](https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/main/images/daily_events.png)
+![Daily Event Count](https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/master/images/daily_events.png)
 
 * Most visited sub-categories
 
-![Most Visited Sub-Categories](https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/main/images/most_visited_subcategories.png)
+![Most Visited Sub-Categories](https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/master/images/most_visited_subcategories.png)
 
 * Hour vs Event Type vs Price
 
-![Hour vs Event Type vs Price](https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/main/images/hour_event_price.png)
+![Hour vs Event Type vs Price](https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/master/images/hour_event_price.png)
 
 * Purchase conversion volume
 
-![Purchase Conversion Volume](https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/main/images/purchase_conversion_volume.png)
+![Purchase Conversion Volume](https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/master/images/purchase_conversion_volume.png)
 
 * Purchase conversion rate
 
-![Purchase Conversion Rate](https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/main/images/purchase_conversion_rate.png)
+![Purchase Conversion Rate](https://github.com/prakashdontaraju/google-cloud-ecommerce/blob/master/images/purchase_conversion_rate.png)
 
 ## Connect With Me
 **Prakash Dontaraju** [LinkedIn](https://www.linkedin.com/in/prakashdontaraju) [Twitter](https://twitter.com/WittyGrit) [Medium](https://medium.com/@wittygrit)
