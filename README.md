@@ -1,6 +1,6 @@
 # 2 Data Pipelines To Easily Know Customer Purchasing Behaviors
 
-Both Steaming Pipeline and Batch Pipeline on Google Cloud
+Successful implementation of Steaming Pipeline and Batch Pipeline on Google Cloud
 
 ## Business Case
 
@@ -18,7 +18,7 @@ I plan to write a blog post about how to deploy these 2 pipelines on Google Clou
 
 ## Data
 
-I chose the [eCommerce behavior data from multi category store](https://www.kaggle.com/mkechinov/ecommerce-behavior-data-from-multi-category-store) available on Kaggle to focus on successfully implementing streaming and batch pipelines.
+I chose the eCommerce behavior data from multi category store available on Kaggle to focus on successfully implementing streaming and batch pipelines.
 
 I pre-process (transform) data but real business data requires significantly more pre-processing as it's quality may not be ideal for the business problem(s) at hand.
 
